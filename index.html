@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MTalk Web</title>
+<style>
+  body { font-family: Arial, sans-serif; background:#f0f2f5; margin:0; padding:0; display:flex; height:100vh;}
+  #sidebar { width: 250px; background:#fff; border-right:1px solid #ccc; padding:10px; display:flex; flex-direction:column;}
+  #chat { flex:1; display:flex; flex-direction:column; }
+  #chatBox { flex:1; padding:10px; overflow-y:auto; background:#e5ddd5; }
+  .message { margin:5px 0; padding:5px 10px; border-radius:5px; max-width:70%; }
+  .message.self { background:#dcf8c6; align-self:flex-end; }
+  .message.other { background:#fff; align-self:flex-start; }
+  #inputArea { display:flex; padding:10px; background:#fff; }
+  #inputArea input { flex:1; padding:5px; font-size:16px; }
+  #inputArea button { padding:5px 10px; margin-left:5px; }
+  #friends { flex:1; overflow-y:auto; margin-top:10px; }
+  .friend { padding:5px; border-bottom:1px solid #eee; cursor:pointer; }
+  .request { color:blue; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h3>MTalk</h3>
+  <div>
+    Friend Key: <input id="myKey" placeholder="Your key"><br>
+    Username: <input id="username" placeholder="Username"><br>
+    <button onclick="connect()">Connect</button>
+  </div>
+  <h4>Friends</h4>
+  <div id="friends"></div>
+  <h4>Friend Requests</h4>
+  <div id="requests"></div>
+  <input id="addFriendKey" placeholder="Friend key"><button onclick="sendFriendRequest()">Add Friend</button>
+</div>
+
+<div id="chat">
+  <div id="chatBox"></div>
+  <div id="inputArea">
+    <input id="messageInput" placeholder="Type your message">
+    <button onclick="sendMessage()">Send</button>
+  </div>
+</div>
+
+<script>
+let ws;
+let myKey;
+let username;
+let currentChatKey = null;
+let friends = {}; // friend_key -> username
+
+function logMessage(from, content, self=false) {
+    const chatBox = document.getElementById("chatBox");
+    const div = document.createElement("div");
+    div.className = "message " + (self ? "self":"other");
+    div.textContent = from + ": " + content;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function connect() {
+    myKey = document.getElementById("myKey").value.trim();
+    username = document.getElementById("username").value.trim();
+    if(!myKey || !username) { alert("Enter both key and username"); return; }
+
+    ws = new WebSocket("ws://localhost:8765"); // change to your server
+    ws.onopen = () => {
+        ws.send(JSON.stringify({type:"connect", friend_key:myKey, username:username}));
+        alert("Connected!");
+    };
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if(data.type === "message") {
+            logMessage(data.from, data.message, false);
+        } else if(data.type === "friend_request") {
+            addFriendRequest(data.from);
+        } else if(data.type === "friend_accept") {
+            addFriend(data.from, data.username);
+        }
+    };
+}
+
+function sendMessage() {
+    const msg = document.getElementById("messageInput").value.trim();
+    if(!msg || !currentChatKey) return;
+    ws.send(JSON.stringify({type:"message", to:currentChatKey, message:msg}));
+    logMessage(username, msg, true);
+    document.getElementById("messageInput").value = "";
+}
+
+function sendFriendRequest() {
+    const key = document.getElementById("addFriendKey").value.trim();
+    if(!key) return;
+    ws.send(JSON.stringify({type:"friend_request", to:key}));
+    alert("Friend request sent to " + key);
+    document.getElementById("addFriendKey").value = "";
+}
+
+function addFriendRequest(key) {
+    const div = document.createElement("div");
+    div.className = "request";
+    div.textContent = "Friend request from " + key;
+    div.onclick = () => {
+        ws.send(JSON.stringify({type:"friend_accept", to:key}));
+        addFriend(key, key); // temporarily use key as name
+        div.remove();
+    };
+    document.getElementById("requests").appendChild(div);
+}
+
+function addFriend(key, name) {
+    friends[key] = name;
+    const div = document.createElement("div");
+    div.className = "friend";
+    div.textContent = name + " (" + key + ")";
+    div.onclick = () => { currentChatKey = key; document.getElementById("chatBox").innerHTML=""; };
+    document.getElementById("friends").appendChild(div);
+}
+</script>
+
+</body>
+</html>
