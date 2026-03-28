@@ -1,227 +1,109 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-	<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
-	<title></title>
-	<meta name="generator" content="LibreOffice 7.4.4.2 (Windows)"/>
-	<meta name="created" content="2026-03-28T16:32:28.531000000"/>
-	<meta name="changed" content="2026-03-28T16:41:26.850000000"/>
+<meta charset="UTF-8">
+<title>MTalk Simple</title>
+<style>
+  body { font-family: Arial, sans-serif; margin:0; background:#f5f5f5; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; }
+  #loginBox, #chatBoxContainer { background:#fff; padding:20px; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.1); width:300px; display:none; }
+  input { width:100%; padding:8px; margin:5px 0; border:1px solid #ccc; border-radius:5px; }
+  button { width:100%; padding:10px; margin-top:10px; border:none; border-radius:5px; background:#2196F3; color:#fff; cursor:pointer; }
+  #chatMessages { height:200px; overflow-y:auto; border:1px solid #ccc; padding:5px; margin-bottom:10px; background:#e8f0fe; border-radius:5px; }
+  .message { margin:5px 0; }
+</style>
 </head>
-<body lang="pl-PL" dir="ltr"><p>&lt;!DOCTYPE html&gt;<br/>
-&lt;html
-lang=&quot;en&quot;&gt;<br/>
-&lt;head&gt;<br/>
-&lt;meta
-charset=&quot;UTF-8&quot;&gt;<br/>
-&lt;title&gt;MTalk
-Web&lt;/title&gt;<br/>
-&lt;style&gt;<br/>
-  body { font-family:
-Arial, sans-serif; margin:0; display:flex; height:100vh;
-background:#f5f6fa; }<br/>
-  #sidebar { width: 250px;
-background:#fff; border-right:1px solid #ccc; display:flex;
-flex-direction:column; padding:10px; }<br/>
-  #chat { flex:1;
-display:flex; flex-direction:column; }<br/>
-  #chatBox { flex:1;
-padding:10px; overflow-y:auto; background:#e8f0fe; border-bottom:1px
-solid #ccc; }<br/>
-  .message { margin:5px 0; padding:8px 12px;
-border-radius:15px; max-width:70%; word-wrap:break-word; }<br/>
- 
-.message.self { background:#b3e5fc; align-self:flex-end; }<br/>
- 
-.message.other { background:#ffffff; align-self:flex-start; }<br/>
- 
-#inputArea { display:flex; padding:10px; background:#fff; }<br/>
- 
-#inputArea input { flex:1; padding:8px; font-size:16px;
-border-radius:5px; border:1px solid #ccc; }<br/>
-  #inputArea button
-{ padding:8px 15px; margin-left:5px; border:none; border-radius:5px;
-background:#2196F3; color:#fff; cursor:pointer; }<br/>
-  #friends,
-#requests { margin-top:10px; flex:1; overflow-y:auto; }<br/>
- 
-.friend, .request { padding:6px 10px; margin-bottom:5px;
-border-radius:5px; background:#f0f0f0; cursor:pointer; }<br/>
- 
-.request { background:#ffecb3; }<br/>
-  h3, h4 { margin:5px 0;
-}<br/>
-&lt;/style&gt;<br/>
-&lt;/head&gt;<br/>
-&lt;body&gt;<br/>
-<br/>
-&lt;div
-id=&quot;sidebar&quot;&gt;<br/>
-  &lt;h3&gt;MTalk&lt;/h3&gt;<br/>
- 
-&lt;input id=&quot;username&quot; placeholder=&quot;Username&quot;&gt;<br/>
+<body>
 
- &lt;input id=&quot;myKey&quot; placeholder=&quot;Your Friend Key&quot;&gt;<br/>
+<div id="loginBox">
+  <h3>MTalk</h3>
+  <input id="username" placeholder="Username">
+  <input id="password" type="password" placeholder="Password">
+  <label><input type="checkbox" id="rememberMe"> I won’t forget this password</label>
+  <button onclick="login()">Login / Sign Up</button>
+</div>
 
- &lt;button onclick=&quot;connect()&quot;&gt;Connect&lt;/button&gt;<br/>
-<br/>
+<div id="chatBoxContainer">
+  <h3>MTalk Chat</h3>
+  <div id="chatMessages"></div>
+  <input id="messageInput" placeholder="Type your message...">
+  <button onclick="sendMessage()">Send</button>
+  <button onclick="logout()">Logout</button>
+</div>
 
- &lt;h4&gt;Friends&lt;/h4&gt;<br/>
-  &lt;div id=&quot;friends&quot;&gt;&lt;/div&gt;<br/>
-<br/>
+<script>
+let ws;
+let username;
+let password;
 
- &lt;h4&gt;Friend Requests&lt;/h4&gt;<br/>
-  &lt;div
-id=&quot;requests&quot;&gt;&lt;/div&gt;<br/>
-<br/>
-  &lt;input
-id=&quot;addFriendKey&quot; placeholder=&quot;Friend Key&quot;&gt;<br/>
+function login() {
+    username = document.getElementById("username").value.trim();
+    password = document.getElementById("password").value.trim();
+    const remember = document.getElementById("rememberMe").checked;
 
- &lt;button onclick=&quot;sendFriendRequest()&quot;&gt;Add
-Friend&lt;/button&gt;<br/>
-&lt;/div&gt;<br/>
-<br/>
-&lt;div
-id=&quot;chat&quot;&gt;<br/>
-  &lt;div id=&quot;chatBox&quot;&gt;&lt;/div&gt;<br/>
+    if(!username || !password) { alert("Enter both username and password"); return; }
 
- &lt;div id=&quot;inputArea&quot;&gt;<br/>
-    &lt;input
-id=&quot;messageInput&quot; placeholder=&quot;Type your message...&quot;&gt;<br/>
+    if(remember) {
+        localStorage.setItem("mtalk_user", username);
+        localStorage.setItem("mtalk_pass", password);
+    }
 
-   &lt;button onclick=&quot;sendMessage()&quot;&gt;Send&lt;/button&gt;<br/>
+    document.getElementById("loginBox").style.display="none";
+    document.getElementById("chatBoxContainer").style.display="block";
 
- &lt;/div&gt;<br/>
-&lt;/div&gt;<br/>
-<br/>
-&lt;script&gt;<br/>
-let
-ws;<br/>
-let myKey;<br/>
-let username;<br/>
-let currentChatKey =
-null;<br/>
-let friends = {};<br/>
-<br/>
-function logMessage(from,
-content, self=false) {<br/>
-    const chatBox =
-document.getElementById(&quot;chatBox&quot;);<br/>
-    const div =
-document.createElement(&quot;div&quot;);<br/>
-    div.className =
-&quot;message &quot; + (self ? &quot;self&quot; : &quot;other&quot;);<br/>
+    connect();
+}
 
-   div.textContent = from + &quot;: &quot; + content;<br/>
-   
-chatBox.appendChild(div);<br/>
-    chatBox.scrollTop =
-chatBox.scrollHeight;<br/>
-}<br/>
-<br/>
-function connect() {<br/>
-   
-myKey = document.getElementById(&quot;myKey&quot;).value.trim();<br/>
+function connect() {
+    // For demo, using localhost, replace with your WebSocket server
+    ws = new WebSocket("ws://localhost:8765");
+    ws.onopen = () => {
+        ws.send(JSON.stringify({type:"login", username:username, password:password}));
+        addMessage("System", "Connected to server");
+    };
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if(data.type==="message") {
+            addMessage(data.from, data.message);
+        }
+    };
+}
 
-   username = document.getElementById(&quot;username&quot;).value.trim();<br/>
+function sendMessage() {
+    const msg = document.getElementById("messageInput").value.trim();
+    if(!msg) return;
+    ws.send(JSON.stringify({type:"message", message:msg}));
+    addMessage(username, msg);
+    document.getElementById("messageInput").value="";
+}
 
-   if(!myKey || !username) { alert(&quot;Enter both key and
-username&quot;); return; }<br/>
-<br/>
-    ws = new
-WebSocket(&quot;ws://localhost:8765&quot;); // Replace with your
-server<br/>
-    ws.onopen = () =&gt; {<br/>
-       
-ws.send(JSON.stringify({type:&quot;connect&quot;, friend_key:myKey,
-username:username}));<br/>
-        alert(&quot;Connected!&quot;);<br/>
+function addMessage(from, message) {
+    const div = document.createElement("div");
+    div.className = "message";
+    div.textContent = from + ": " + message;
+    document.getElementById("chatMessages").appendChild(div);
+    document.getElementById("chatMessages").scrollTop = document.getElementById("chatMessages").scrollHeight;
+}
 
-   };<br/>
-    ws.onmessage = (event) =&gt; {<br/>
-        const data
-= JSON.parse(event.data);<br/>
-        if(data.type === &quot;message&quot;)
-{<br/>
-            logMessage(data.from, data.message, false);<br/>
- 
-      } else if(data.type === &quot;friend_request&quot;) {<br/>
-    
-       addFriendRequest(data.from);<br/>
-        } else if(data.type
-=== &quot;friend_accept&quot;) {<br/>
-           
-addFriend(data.from, data.username);<br/>
-        }<br/>
-   
-};<br/>
-}<br/>
-<br/>
-function sendMessage() {<br/>
-    const msg =
-document.getElementById(&quot;messageInput&quot;).value.trim();<br/>
+function logout() {
+    localStorage.removeItem("mtalk_user");
+    localStorage.removeItem("mtalk_pass");
+    ws.close();
+    document.getElementById("chatBoxContainer").style.display="none";
+    document.getElementById("loginBox").style.display="block";
+}
 
-   if(!msg || !currentChatKey) return;<br/>
-   
-ws.send(JSON.stringify({type:&quot;message&quot;, to:currentChatKey,
-message:msg}));<br/>
-    logMessage(username, msg, true);<br/>
-   
-document.getElementById(&quot;messageInput&quot;).value =
-&quot;&quot;;<br/>
-}<br/>
-<br/>
-function sendFriendRequest() {<br/>
- 
-  const key = document.getElementById(&quot;addFriendKey&quot;).value.trim();<br/>
+// Auto-login if "remember me" checked previously
+window.onload = () => {
+    const savedUser = localStorage.getItem("mtalk_user");
+    const savedPass = localStorage.getItem("mtalk_pass");
+    if(savedUser && savedPass) {
+        document.getElementById("username").value = savedUser;
+        document.getElementById("password").value = savedPass;
+        document.getElementById("rememberMe").checked = true;
+    }
+    document.getElementById("loginBox").style.display="block";
+};
+</script>
 
-   if(!key) return;<br/>
-   
-ws.send(JSON.stringify({type:&quot;friend_request&quot;, to:key}));<br/>
-
-   alert(&quot;Friend request sent to &quot; + key);<br/>
-   
-document.getElementById(&quot;addFriendKey&quot;).value =
-&quot;&quot;;<br/>
-}<br/>
-<br/>
-function addFriendRequest(key) {<br/>
-
-   const div = document.createElement(&quot;div&quot;);<br/>
-   
-div.className = &quot;request&quot;;<br/>
-    div.textContent =
-&quot;Friend request from &quot; + key + &quot; (click to accept)&quot;;<br/>
-
-   div.onclick = () =&gt; {<br/>
-       
-ws.send(JSON.stringify({type:&quot;friend_accept&quot;, to:key}));<br/>
-
-       addFriend(key, key);<br/>
-        div.remove();<br/>
-    };<br/>
-
-   document.getElementById(&quot;requests&quot;).appendChild(div);<br/>
-}<br/>
-<br/>
-function
-addFriend(key, name) {<br/>
-    friends[key] = name;<br/>
-    const
-div = document.createElement(&quot;div&quot;);<br/>
-    div.className
-= &quot;friend&quot;;<br/>
-    div.textContent = name + &quot; (&quot;
-+ key + &quot;)&quot;;<br/>
-    div.onclick = () =&gt; {
-currentChatKey = key;
-document.getElementById(&quot;chatBox&quot;).innerHTML=&quot;&quot;;
-};<br/>
-   
-document.getElementById(&quot;friends&quot;).appendChild(div);<br/>
-}<br/>
-&lt;/script&gt;<br/>
-<br/>
-&lt;/body&gt;<br/>
-&lt;/html&gt;</p>
 </body>
 </html>
